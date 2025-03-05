@@ -1,45 +1,29 @@
-const express = require('express');
+const { Server } = require('socket.io');
 const http = require('http');
-const socketIo = require('socket.io');
-const app = express();
-const server = http.createServer(app);
-const io = socketIo(server);
 
-let devices = [];
+// Esta es la función handler de Vercel
+module.exports = (req, res) => {
+  const server = http.createServer((req, res) => {
+    res.end("Servidor en funcionamiento");
+  });
 
-app.use(express.static('public'));
+  // Inicia el servidor de WebSockets (Socket.IO)
+  const io = new Server(server);
 
-io.on('connection', (socket) => {
-    console.log('Nuevo dispositivo conectado: ' + socket.id);
-
-    // Enviar la lista de dispositivos a todos los clientes
-    io.emit('update-devices', devices);
-
-    // Guardar el nombre del dispositivo
-    socket.on('set-device-name', (deviceName) => {
-        const device = { id: socket.id, name: deviceName };
-        devices.push(device);
-        io.emit('update-devices', devices); // Actualizar la lista de dispositivos
-    });
-
-    // Enviar archivo a un dispositivo específico
-    socket.on('send-file', (data) => {
-        const { file, to } = data;
-        const device = devices.find(device => device.id === to);
-        if (device) {
-            // Emitir el archivo al dispositivo de destino con su nombre
-            socket.to(device.id).emit('receive-file', { fileData: file.data, fileName: file.name });
-        }
-    });
+  io.on('connection', (socket) => {
+    console.log('Un dispositivo se ha conectado: ' + socket.id);
 
     socket.on('disconnect', () => {
-        console.log('Dispositivo desconectado: ' + socket.id);
-        devices = devices.filter(device => device.id !== socket.id);
-        io.emit('update-devices', devices); // Actualizar la lista de dispositivos
+      console.log('Dispositivo desconectado: ' + socket.id);
     });
-});
+  });
 
-const port = process.env.PORT || 3000;
-server.listen(port, () => {
-    console.log('Servidor escuchando en puerto ${port}');
-});
+  // Aquí la función debe devolver la respuesta para Vercel
+  server.listen(3000, () => {
+    console.log('Servidor escuchando en el puerto 3000');
+  });
+
+  // No es necesario retornar nada explícitamente aquí para WebSockets,
+  // ya que Vercel maneja la comunicación.
+  return res.status(200).send({ message: 'Servidor en funcionamiento' });
+};
